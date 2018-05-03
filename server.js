@@ -471,6 +471,27 @@ app.post('/updateFenceDetails', function(req, res) {
 	}
 });
 
+app.post('/updatestatus', function(req, res){
+	let device = req.body.device;
+
+	updateQuery = {
+		$set : {		  
+		  "isUpdated": false		  
+		}
+	  }
+  
+	  deviceModel.findOneAndUpdate({device_code: parseInt(device)}, updateQuery, function(err,obj) { 
+		//console.log(obj); 
+		if (err) {                
+			res.json({ "success": false, "errormessage": "" });
+			  } else {       
+				res.json({ "success": true, "errormessage": "" });
+			  }
+	  
+	  });
+});
+
+
 app.post('/fileavstatus', function(req, res){
 
 	try {
