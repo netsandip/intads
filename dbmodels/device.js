@@ -16,6 +16,7 @@ deviceSchema = mongoose.Schema({
     isUpdated: { type : Boolean, default: false },
     transaction: [{
         url: String,
+        filename: String,
         isPlay: Boolean,
         isStop: Boolean
     }],

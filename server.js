@@ -491,7 +491,6 @@ app.post('/updatestatus', function(req, res){
 	  });
 });
 
-
 app.post('/fileavstatus', function(req, res){
 
 	try {
@@ -512,6 +511,37 @@ app.post('/fileavstatus', function(req, res){
                 // }
                 // auditlogger.auditLog(auditModel);
                 res.json({ "success": true, "errormessage": "", data: obj });
+            }
+		
+		}); 
+
+				
+	} catch (error) {
+		console.log(error);
+	}
+
+});
+
+app.post('/filestoplay', function(req, res){
+
+	try {
+		
+		deviceModel.find({device_code: req.body.device}, function(err,obj) { 
+			// console.log(obj); 
+			if (err) {                
+                res.status(400).send(err);
+            } else {                
+                // let auditModel = {
+                //     action_performed: "Save",
+                //     action_desc: AuditMessages.ValidicUsertoken,
+                //     module_name: "User Module",
+                //     screen_name:"updateValidicTokenToUsers",                    
+                //     subject_id: req.body.user,
+                //     client_id: req.decoded._doc.clientId,                    
+                //     new_data: JSON.stringify(update)
+                // }
+                // auditlogger.auditLog(auditModel);
+                res.json({ "success": true, "errormessage": "", data: obj[0].transaction });
             }
 		
 		}); 
