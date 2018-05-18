@@ -13,10 +13,13 @@ var userSchema = require('./dbmodels/users');
 var UserModel = mongoose.model('usersinfo', userSchema, 'users_ad');
 
 var campaignSchema = require('./dbmodels/campaign');
-var campaignModel = mongoose.model('campaigninfo',campaignSchema, 'campaign_ad')
+var campaignModel = mongoose.model('campaigninfo',campaignSchema, 'campaign_ad');
 
 var billboardsSchema = require('./dbmodels/billboards');
-var billboardsModel = mongoose.model('billboardsinfo',billboardsSchema, 'billboards_ad')
+var billboardsModel = mongoose.model('billboardsinfo',billboardsSchema, 'billboards_ad');
+
+var transactionSchema = require('./dbmodels/transactionhistory');
+var transactionModel = mongoose.model('transactionhistoryinfo',transactionSchema, 'transactionhistory_ad');
 
 
 var deviceSchema = require('./dbmodels/device');
@@ -321,33 +324,18 @@ app.post('/storeGPSByDeviceID', function(req, res) {
 
 		let body = {
 			'device_code': req.body.device_code,
-    		'device_name': req.body.device_name,
-    		'device_type': req.body.device_type,
-    		'location': {
-        		'type': coords,
-        		'index': '2d'      // create the geospatial index
-        	}
+    		'location': coords
 		}
-
-		deviceModelInfo = new deviceModel(body);
-
-		deviceModel.findOne({device_name: devicedata.device_name}, function(err,obj) { 
-			//console.log(obj); 
-			if (obj == undefined) {
-				deviceModelInfo.save(function (err) {
-					if (err) {
-						LogError(err, "createDevice");
-						res.status(400).send(err);
-					}
-					else { res.json({ "success": true, "errormessage": "" }); }
-				});	
+		console.log(body);
+		transModelInfo = new transactionModel(body);
+				
+		transModelInfo.save(function (err) {
+			if (err) {
+				LogError(err, "createDevice");
+				res.status(400).send(err);
 			}
-			else
-			{
-				res.json({ "success": false, "errormessage": "userid already exists in the system" });
-			}		
-		
-		});        
+			else { res.json({ "success": true, "errormessage": "" }); }
+		});	
 		
 	} catch (error) {
 		LogError(error, "createDevice");
