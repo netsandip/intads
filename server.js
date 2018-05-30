@@ -10,6 +10,7 @@ var connection = require('./connection');
 var cors = require('cors');
 const fileUpload = require('express-fileupload');
 var userSchema = require('./dbmodels/users');
+var _ = require('underscore');
 var UserModel = mongoose.model('usersinfo', userSchema, 'users_ad');
 
 var campaignSchema = require('./dbmodels/campaign');
@@ -20,6 +21,15 @@ var billboardsModel = mongoose.model('billboardsinfo',billboardsSchema, 'billboa
 
 var transactionSchema = require('./dbmodels/transactionhistory');
 var transactionModel = mongoose.model('transactionhistoryinfo',transactionSchema, 'transactionhistory_ad');
+
+var geospatialSchema = require('./dbmodels/geodata');
+var geospatialModel = mongoose.model('fencelocationsinfo',geospatialSchema,'fencelocations_ad');
+
+var videofilesSchema = require('./dbmodels/videofiles');
+var videofilesModel = mongoose.model('videofilesInfo', videofilesSchema, 'videofiles_ad');
+
+var videomapSchema = require('./dbmodels/videomap');
+var videomapModel = mongoose.model('videomapModel', videomapSchema, 'videomap_ad');
 
 
 var deviceSchema = require('./dbmodels/device');
@@ -292,19 +302,19 @@ app.post('/upload', function(req, res) {
 				return res.status(500).send(err);
 		}
 
-		updateQuery = {
-			"isUpload": true
-        }
+		// updateQuery = {
+		// 	"isUpload": true
+        // }
 
-		deviceModel.findOneAndUpdate({device_code: parseInt(device)}, updateQuery, function(err,obj) { 
-			//console.log(obj); 
-			if (err) {                
-                res.status(400).send(err);
-            } else {       
-                res.status(200).send({ "success": "true" });
-            }
+		// deviceModel.findOneAndUpdate({device_code: parseInt(device)}, updateQuery, function(err,obj) { 
+		// 	//console.log(obj); 
+		// 	if (err) {                
+        //         res.status(400).send(err);
+        //     } else {       
+        //         res.status(200).send({ "success": "true" });
+        //     }
 		
-		}); 	
+		// }); 	
 		
 		});
 	} catch (error) {
@@ -334,13 +344,171 @@ app.post('/storeGPSByDeviceID', function(req, res) {
 				LogError(err, "createDevice");
 				res.status(400).send(err);
 			}
-			else { res.json({ "success": true, "errormessage": "" }); }
+			// else { res.json({ "success": true, "errormessage": "" }); }
 		});	
+
+		geospatialModel.find({ location:
+			{ $geoWithin:
+			   { $centerSphere: [ coords, 5 / 3963.2 ] } } }).populate('videomap').exec(function (err, results) {
+			
+				var lisvidfiles = _.map(
+					results, 
+					function(resultsList) {
+						if (resultsList.videomap !== undefined && resultsList.videomap !== null) {
+							return { 
+								filename:  resultsList.videomap.filename,
+								isPlay: resultsList.videomap.isPlay,
+								url:  resultsList.videomap.url,
+							};	
+						}						
+					}
+				);
+			
+				res.json({ "success": true, "errormessage": "", data: lisvidfiles });		  
+		});
+
+
 		
 	} catch (error) {
 		LogError(error, "createDevice");
 	}
 });
+
+app.post('/savefenceLocations', function(req, res) {
+	try {
+		
+		var locationdata = req.body;
+
+		var coords = [];
+		coords[0] = locationdata.longitude;
+		coords[1] = locationdata.latitude;
+
+		let body = {
+			'fence_name': req.body.fence_name,
+			'userid': req.body.userid,
+			location: {
+				'type': "Point",
+				'coordinates': coords
+			},
+			radius: req.body.radius
+		}
+		console.log(body);
+		geospatialModelInfo = new geospatialModel(body);
+				
+		geospatialModelInfo.save(function (err) {
+			if (err) {
+				LogError(err, "savefenceLocations");
+				res.json({ "success": false, "errormessage": err.message }); 
+			}
+			else { res.json({ "success": true, "errormessage": "" }); }
+		});	
+		
+	} catch (error) {
+		LogError(error, "savefenceLocations");
+	}
+});
+
+app.post('/getDeviceCount', function(req, res){
+	try {
+		deviceModel.find().exec(function (err, results) {
+			res.json({ "success": true, "errormessage": "", data: results.length });		  
+		  });
+	} catch (error) {
+		LogError(error, "getDeviceCount");
+	}
+});
+
+app.post('/getFenceDetails', function(req, res){
+	try {
+		geospatialModel.find().exec(function (err, results) {
+			res.json({ "success": true, "errormessage": "", data: results });		  
+		  });
+	} catch (error) {
+		LogError(error, "getFenceDetails");
+	}
+});
+
+app.post('/getvideofiles', function(req, res){
+	try {
+		videofilesModel.find().sort({"Created_date":-1}).exec(function (err, results) {
+			res.json({ "success": true, "errormessage": "", data: results });		  
+		  });
+	} catch (error) {
+		LogError(error, "getvideofiles");
+	}
+});
+
+app.post('/removefilevideomapping', function(req, res){
+	try {
+		console.log(req.body.id);		
+		videomapModel.findOneAndRemove({_id: req.body.id}, function (err, results) {
+			if (err) {
+				console.log(err);				
+			}
+			
+			res.json({ "success": true, "errormessage": "" });		  
+		  });
+	} catch (error) {
+		LogError(error, "getvideofiles");
+	}
+});
+
+app.post('/savevideomap', function(req, res){
+	try {
+		// console.log(req.body.fence);
+		// console.log(req.body.videos);		
+		// let mappedArray = _.union(req.body.fence, req.body.videos);
+		
+		for (let index = 0; index < req.body.fence.length; index++) {
+			const fenelement = req.body.fence[index];
+			for (let vindex = 0; vindex < req.body.videos.length; vindex++) {
+				const videlement = req.body.videos[vindex];
+				
+				let mappedArray = {
+					'fence_code': fenelement.fence_code,
+					'video_code': videlement.video_code,
+					'fence_name': fenelement.fence_name,
+					'url' : videlement.url,
+					'filename': videlement.filename,
+					'userid' : 'ramesh@gmail.com',
+					'isPlay': true
+				}
+				console.log(mappedArray);
+				deviceModel.findOne({fence_code: fenelement.fence_code, video_code: videlement.video_code}, function(err,obj) { 
+					//console.log(obj); 
+					if (obj == undefined) {
+						let map = new videomapModel(mappedArray);
+						map.save(function (err) {
+							if (err) {
+								LogError(err, "savevideomap");						
+							}
+							
+						});	
+					}					
+				
+				});    			
+				
+			}
+			
+		}
+		
+		res.json({ "success": true, "errormessage": "" }); 
+		
+	} catch (error) {
+		LogError(error, "savevideomap");
+	}
+});
+
+app.post('/getvideomapdetails', function(req, res){
+	try {
+		videomapModel.find().sort({"Created_date":-1}).exec(function (err, results) {
+			res.json({ "success": true, "errormessage": "", data: results });		  
+		  });
+	} catch (error) {
+		LogError(error, "getvideofiles");
+	}
+});
+
 
 app.post('/searchLocations', function(req, res){
 	
@@ -518,17 +686,7 @@ app.post('/filestoplay', function(req, res){
 			// console.log(obj); 
 			if (err) {                
                 res.status(400).send(err);
-            } else {                
-                // let auditModel = {
-                //     action_performed: "Save",
-                //     action_desc: AuditMessages.ValidicUsertoken,
-                //     module_name: "User Module",
-                //     screen_name:"updateValidicTokenToUsers",                    
-                //     subject_id: req.body.user,
-                //     client_id: req.decoded._doc.clientId,                    
-                //     new_data: JSON.stringify(update)
-                // }
-                // auditlogger.auditLog(auditModel);
+            } else {                                
                 res.json({ "success": true, "errormessage": "", data: obj[0].transaction });
             }
 		
