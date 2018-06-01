@@ -349,22 +349,32 @@ app.post('/storeGPSByDeviceID', function(req, res) {
 
 		geospatialModel.find({ location:
 			{ $geoWithin:
-			   { $centerSphere: [ coords, 5 / 3963.2 ] } } }).populate('videomap').exec(function (err, results) {
+			   { $centerSphere: [ coords, 5 / 3963.2 ] } } }, {fence_code:true}).exec(function (err, results) {
+				console.log(results);		
+				
+				var lisvidfiles = _.pluck(results, 'fence_code');;
+
+				videomapModel.find({"fence_code": { $in:lisvidfiles }},{filename: true, isPlay: true, url: true}).exec(function (err, mapresults) {
+					res.json({ "success": true, "errormessage": "", data: mapresults });		
+				});
+
+
+				// var lisvidfiles = _.map(
+				// 	results, 
+				// 	function(resultsList) {
+				// 		if (resultsList.videomap !== undefined && resultsList.videomap !== null) {
+				// 			return { 
+				// 				filename:  resultsList.videomap.filename,
+				// 				isPlay: resultsList.videomap.isPlay,
+				// 				url:  resultsList.videomap.url,
+				// 			};	
+				// 		}						
+				// 	}
+				// );
+
+
 			
-				var lisvidfiles = _.map(
-					results, 
-					function(resultsList) {
-						if (resultsList.videomap !== undefined && resultsList.videomap !== null) {
-							return { 
-								filename:  resultsList.videomap.filename,
-								isPlay: resultsList.videomap.isPlay,
-								url:  resultsList.videomap.url,
-							};	
-						}						
-					}
-				);
-			
-				res.json({ "success": true, "errormessage": "", data: lisvidfiles });		  
+				  
 		});
 
 
